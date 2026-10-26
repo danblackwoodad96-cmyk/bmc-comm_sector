@@ -514,5 +514,28 @@ export default function App() {
         </div>
       </nav>
     </div>
+    import * as XLSX from 'xlsx';
+
+const exportToExcel = () => {
+  // 1. Формируем данные для листа "Журнал заявок"
+  const excelData = filteredTickets.map((t, index) => ({
+    "№": index + 1,
+    "Дата": new Date(t.createdAt).toLocaleDateString('ru-RU'),
+    "Время": new Date(t.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+    "Исполнитель": t.performer,
+    "Источник": t.isAspans !== false ? "Через Aspans" : "Заявка вне Aspans",
+    "Тип системы": CATEGORIES.find(c => c.id === t.category)?.label || t.category,
+    "Описание работ": t.description
+  }));
+
+  // 2. Создаем рабочую книгу Excel
+  const worksheet = XLSX.utils.json_to_sheet(excelData);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Заявки_Квартал");
+
+  // 3. Скачиваем файл
+  const fileName = `Отчет_Заявки_${reportPeriod === 'month' ? 'Месяц' : 'Квартал'}.xlsx`;
+  XLSX.writeFile(workbook, fileName);
+};
   );
 }
