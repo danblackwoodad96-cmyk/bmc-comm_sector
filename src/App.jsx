@@ -19,15 +19,12 @@ import {
   PlusCircle, 
   BarChart3, 
   ListFilter, 
-  Calendar, 
   User, 
   Trash2, 
   Sparkles,
   Layers,
-  ArrowUpRight,
-  TrendingUp,
   FileCheck2,
-  Share2
+  ChevronDown
 } from 'lucide-react';
 
 // Конфигурация Firebase
@@ -44,6 +41,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Список постоянных сотрудников
+const PERFORMERS = ['Роман', 'Данияр', 'Нурыш', 'Максат'];
+
 const CATEGORIES = [
   { id: 'phone', label: 'Телефоны', icon: Phone, color: 'from-blue-600 to-indigo-600', textColor: 'text-blue-400', badgeBg: 'bg-blue-500/10 border-blue-500/30' },
   { id: 'tv', label: 'Телевизоры', icon: Tv, color: 'from-purple-600 to-pink-600', textColor: 'text-purple-400', badgeBg: 'bg-purple-500/10 border-purple-500/30' },
@@ -56,8 +56,8 @@ export default function App() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Форма добавления
-  const [performer, setPerformer] = useState('');
+  // Форма добавления (выбор сотрудника по умолчанию)
+  const [performer, setPerformer] = useState(PERFORMERS[0]);
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [description, setDescription] = useState('');
   const [isAspans, setIsAspans] = useState(true);
@@ -83,11 +83,11 @@ export default function App() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!performer.trim() || !description.trim()) return;
+    if (!description.trim()) return;
 
     try {
       await addDoc(collection(db, 'tickets'), {
-        performer: performer.trim(),
+        performer,
         category,
         description: description.trim(),
         isAspans,
@@ -125,7 +125,7 @@ export default function App() {
 
   const filteredTickets = filterTicketsByPeriod();
 
-  // Статистика по исполнителям
+  // Статистика по сотрудникам
   const performerStats = filteredTickets.reduce((acc, ticket) => {
     const perf = ticket.performer || 'Не указан';
     if (!acc[perf]) {
@@ -133,7 +133,7 @@ export default function App() {
     }
     acc[perf].total += 1;
     
-    const isAsp = ticket.isAspans !== false; // Обратная совместимость с первыми записями
+    const isAsp = ticket.isAspans !== false;
     if (isAsp) {
       acc[perf].aspans += 1;
     } else {
@@ -150,7 +150,7 @@ export default function App() {
     return acc;
   }, {});
 
-  // Статистика по источнику (Aspans vs Вне Aspans)
+  // Статистика по источнику
   const aspansStats = filteredTickets.reduce((acc, ticket) => {
     const isAsp = ticket.isAspans !== false;
     if (isAsp) acc.aspans += 1;
@@ -190,21 +190,25 @@ export default function App() {
             )}
 
             <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-xl space-y-4">
-              {/* Исполнитель */}
+              {/* Исполнитель (Выпадающий список) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                   Исполнитель
                 </label>
                 <div className="relative">
-                  <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Введите имя..."
+                  <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none z-10" />
+                  <select
                     value={performer}
                     onChange={(e) => setPerformer(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-3 text-sm focus:outline-none focus:border-cyan-500 text-slate-100 placeholder:text-slate-600 transition-colors"
-                  />
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:border-cyan-500 text-slate-100 transition-colors appearance-none cursor-pointer font-medium"
+                  >
+                    {PERFORMERS.map((name) => (
+                      <option key={name} value={name} className="bg-slate-900 text-slate-100">
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
                 </div>
               </div>
 
@@ -241,7 +245,7 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Тип заявки */}
+              {/* Тип системы */}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                   Тип системы
@@ -352,7 +356,7 @@ export default function App() {
 
                     <div className="flex items-center gap-1 text-[11px] text-slate-400 pt-1 border-t border-slate-800/60">
                       <User className="w-3 h-3 text-slate-500" />
-                      <span>{ticket.performer}</span>
+                      <span className="font-semibold text-slate-300">{ticket.performer}</span>
                     </div>
                   </div>
                 );
@@ -437,10 +441,9 @@ export default function App() {
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3">
               <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">По сотрудникам</h3>
               <div className="space-y-3">
-                {Object.entries(performerStats).length === 0 ? (
-                  <p className="text-xs text-slate-500">Нет данных за выплывающий период</p>
-                ) : (
-                  Object.entries(performerStats).map(([name, stat]) => (
+                {PERFORMERS.map((name) => {
+                  const stat = performerStats[name] || { total: 0, aspans: 0, nonAspans: 0, byCat: {} };
+                  return (
                     <div key={name} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs text-slate-200">{name}</span>
@@ -468,8 +471,8 @@ export default function App() {
                         })}
                       </div>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
             </div>
           </div>
