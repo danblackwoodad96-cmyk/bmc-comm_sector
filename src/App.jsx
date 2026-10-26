@@ -24,8 +24,10 @@ import {
   Sparkles,
   Layers,
   FileCheck2,
-  ChevronDown
+  ChevronDown,
+  Download
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 // Конфигурация Firebase
 const firebaseConfig = {
@@ -56,7 +58,7 @@ export default function App() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Форма добавления (выбор сотрудника по умолчанию)
+  // Форма добавления
   const [performer, setPerformer] = useState(PERFORMERS[0]);
   const [category, setCategory] = useState(CATEGORIES[0].id);
   const [description, setDescription] = useState('');
@@ -125,6 +127,32 @@ export default function App() {
 
   const filteredTickets = filterTicketsByPeriod();
 
+  // Функция экспорта в Excel
+  const exportToExcel = () => {
+    if (filteredTickets.length === 0) {
+      alert('За выбранный период нет заявок для выгрузки!');
+      return;
+    }
+
+    const excelData = filteredTickets.map((t, index) => ({
+      "№": index + 1,
+      "Дата": new Date(t.createdAt).toLocaleDateString('ru-RU'),
+      "Время": new Date(t.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      "Исполнитель": t.performer || 'Не указан',
+      "Источник": t.isAspans !== false ? "Через Aspans" : "Заявка вне Aspans",
+      "Тип системы": CATEGORIES.find(c => c.id === t.category)?.label || t.category,
+      "Описание работ": t.description
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    const sheetName = reportPeriod === 'month' ? "Заявки_Месяц" : "Заявки_Квартал";
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    const fileName = `Отчет_Заявки_${reportPeriod === 'month' ? 'Месяц' : 'Квартал'}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+  };
+
   // Статистика по сотрудникам
   const performerStats = filteredTickets.reduce((acc, ticket) => {
     const perf = ticket.performer || 'Не указан';
@@ -190,7 +218,7 @@ export default function App() {
             )}
 
             <form onSubmit={handleSubmit} className="bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-xl space-y-4">
-              {/* Исполнитель (Выпадающий список) */}
+              {/* Исполнитель */}
               <div>
                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
                   Исполнитель
@@ -388,6 +416,15 @@ export default function App() {
               </button>
             </div>
 
+            {/* Кнопка экспорта в Excel */}
+            <button
+              onClick={exportToExcel}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-2xl shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 text-xs transition-all active:scale-[0.98]"
+            >
+              <Download className="w-4 h-4" />
+              Скачать отчет в Excel ({reportPeriod === 'month' ? 'Месяц' : 'Квартал'})
+            </button>
+
             {/* Карточка общей сводки */}
             <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -514,28 +551,5 @@ export default function App() {
         </div>
       </nav>
     </div>
-    import * as XLSX from 'xlsx';
-
-const exportToExcel = () => {
-  // 1. Формируем данные для листа "Журнал заявок"
-  const excelData = filteredTickets.map((t, index) => ({
-    "№": index + 1,
-    "Дата": new Date(t.createdAt).toLocaleDateString('ru-RU'),
-    "Время": new Date(t.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
-    "Исполнитель": t.performer,
-    "Источник": t.isAspans !== false ? "Через Aspans" : "Заявка вне Aspans",
-    "Тип системы": CATEGORIES.find(c => c.id === t.category)?.label || t.category,
-    "Описание работ": t.description
-  }));
-
-  // 2. Создаем рабочую книгу Excel
-  const worksheet = XLSX.utils.json_to_sheet(excelData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Заявки_Квартал");
-
-  // 3. Скачиваем файл
-  const fileName = `Отчет_Заявки_${reportPeriod === 'month' ? 'Месяц' : 'Квартал'}.xlsx`;
-  XLSX.writeFile(workbook, fileName);
-};
   );
 }
