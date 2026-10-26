@@ -25,12 +25,12 @@ import {
   Layers,
   FileCheck2,
   ChevronDown,
-https://script.google.com/macros/s/AKfycbwSXw0Ijwq4Bgf7RU0mwhxK7OTya6dAg1XwT7U7pvu2ZVJ2SWjRXrbyMRPXVaAA5rqi/exec
+  Download
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-// ⚠️ ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT (которая заканчивается на /exec)
-const GOOGLE_SHEETS_URL = "ВСТАВЬТЕ_ССЫЛКУ_СЮДА";
+// Ссылка для синхронизации с Google Таблицей
+const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbwSXw0Ijwq4Bgf7RU0MwhxK70Tya6dAg1XwT7U7pvu2ZVJ2SWjRXrbyMRPXVaAA5rqi/exec";
 
 // Конфигурация Firebase
 const firebaseConfig = {
@@ -101,7 +101,7 @@ export default function App() {
       });
 
       // 2. Дублируем в Google Таблицу в реальном времени
-      if (GOOGLE_SHEETS_URL && !GOOGLE_SHEETS_URL.includes("ВСТАВЬТЕ_ССЫЛКУ_СЮДА")) {
+      if (GOOGLE_SHEETS_URL) {
         fetch(GOOGLE_SHEETS_URL, {
           method: 'POST',
           mode: 'no-cors',
