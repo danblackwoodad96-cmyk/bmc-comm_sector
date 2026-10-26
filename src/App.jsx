@@ -551,5 +551,23 @@ export default function App() {
         </div>
       </nav>
     </div>
+    // Вставьте вашу ссылку Apps Script сюда
+const GOOGLE_SHEETS_URL = "ВАША_ССЫЛКА_ИЗ_ШАГА_1";
+
+// Внутри handleSubmit после сохранения в Firebase:
+if (GOOGLE_SHEETS_URL) {
+  fetch(GOOGLE_SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dateTime: new Date().toLocaleString('ru-RU'),
+      performer: performer,
+      isAspans: isAspans,
+      category: CATEGORIES.find(c => c.id === category)?.label || category,
+      description: description.trim()
+    })
+  });
+}
   );
 }
