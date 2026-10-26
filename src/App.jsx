@@ -25,9 +25,12 @@ import {
   Layers,
   FileCheck2,
   ChevronDown,
-  Download
+https://script.google.com/macros/s/AKfycbwSXw0Ijwq4Bgf7RU0mwhxK7OTya6dAg1XwT7U7pvu2ZVJ2SWjRXrbyMRPXVaAA5rqi/exec
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+
+// ⚠️ ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GOOGLE APPS SCRIPT (которая заканчивается на /exec)
+const GOOGLE_SHEETS_URL = "ВСТАВЬТЕ_ССЫЛКУ_СЮДА";
 
 // Конфигурация Firebase
 const firebaseConfig = {
@@ -88,6 +91,7 @@ export default function App() {
     if (!description.trim()) return;
 
     try {
+      // 1. Сохраняем в Firebase
       await addDoc(collection(db, 'tickets'), {
         performer,
         category,
@@ -95,6 +99,22 @@ export default function App() {
         isAspans,
         createdAt: new Date().toISOString()
       });
+
+      // 2. Дублируем в Google Таблицу в реальном времени
+      if (GOOGLE_SHEETS_URL && !GOOGLE_SHEETS_URL.includes("ВСТАВЬТЕ_ССЫЛКУ_СЮДА")) {
+        fetch(GOOGLE_SHEETS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            dateTime: new Date().toLocaleString('ru-RU'),
+            performer: performer,
+            isAspans: isAspans,
+            category: CATEGORIES.find(c => c.id === category)?.label || category,
+            description: description.trim()
+          })
+        }).catch(err => console.error("Ошибка отправки в Google Таблицу:", err));
+      }
 
       setDescription('');
       setSuccessMsg(true);
@@ -551,23 +571,5 @@ export default function App() {
         </div>
       </nav>
     </div>
-    // Вставьте вашу ссылку Apps Script сюда
-const GOOGLE_SHEETS_URL = "ВАША_ССЫЛКА_ИЗ_ШАГА_1";
-
-// Внутри handleSubmit после сохранения в Firebase:
-if (GOOGLE_SHEETS_URL) {
-  fetch(GOOGLE_SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      dateTime: new Date().toLocaleString('ru-RU'),
-      performer: performer,
-      isAspans: isAspans,
-      category: CATEGORIES.find(c => c.id === category)?.label || category,
-      description: description.trim()
-    })
-  });
-}
   );
 }
