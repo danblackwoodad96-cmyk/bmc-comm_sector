@@ -8,6 +8,7 @@ import {
   query, 
   orderBy, 
   deleteDoc, 
+  updateDoc,
   doc 
 } from 'firebase/firestore';
 import { 
@@ -25,7 +26,9 @@ import {
   Layers,
   FileCheck2,
   ChevronDown,
-  Download
+  Download,
+  Edit2,
+  X
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -67,6 +70,9 @@ export default function App() {
   const [description, setDescription] = useState('');
   const [isAspans, setIsAspans] = useState(true);
   const [successMsg, setSuccessMsg] = useState(false);
+
+  // Форма редактирования
+  const [editingTicket, setEditingTicket] = useState(null);
 
   // Фильтры отчета
   const [reportPeriod, setReportPeriod] = useState('month');
@@ -127,6 +133,23 @@ export default function App() {
   const handleDelete = async (id) => {
     if (confirm('Удалить эту заявку?')) {
       await deleteDoc(doc(db, 'tickets', id));
+    }
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editingTicket || !editingTicket.description.trim()) return;
+
+    try {
+      await updateDoc(doc(db, 'tickets', editingTicket.id), {
+        performer: editingTicket.performer,
+        category: editingTicket.category,
+        description: editingTicket.description.trim(),
+        isAspans: editingTicket.isAspans
+      });
+      setEditingTicket(null); // Закрываем модальное окно после сохранения
+    } catch (err) {
+      console.error("Ошибка при обновлении:", err);
     }
   };
 
@@ -207,9 +230,9 @@ export default function App() {
   }, { aspans: 0, nonAspans: 0 });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24">
+    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-24 relative">
       {/* Шапка */}
-      <header className="sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="bg-gradient-to-tr from-cyan-500 to-blue-600 p-2 rounded-xl text-white shadow-lg shadow-cyan-500/20">
@@ -385,13 +408,19 @@ export default function App() {
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-slate-500">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-slate-500 mr-2">
                           {new Date(ticket.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}
                         </span>
                         <button 
+                          onClick={() => setEditingTicket(ticket)}
+                          className="text-slate-500 hover:text-cyan-400 p-1.5 rounded-lg transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button 
                           onClick={() => handleDelete(ticket.id)}
-                          className="text-slate-600 hover:text-red-400 p-1 rounded-lg transition-colors"
+                          className="text-slate-500 hover:text-red-400 p-1.5 rounded-lg transition-colors"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -536,8 +565,129 @@ export default function App() {
         )}
       </main>
 
+      {/* Модальное окно редактирования */}
+      {editingTicket && (
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl p-5 w-full max-w-md shadow-2xl relative">
+            <button 
+              onClick={() => setEditingTicket(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h3 className="font-bold text-lg mb-4 text-slate-100">Редактировать заявку</h3>
+            
+            <form onSubmit={handleUpdate} className="space-y-4">
+              {/* Исполнитель */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Исполнитель
+                </label>
+                <div className="relative">
+                  <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none z-10" />
+                  <select
+                    value={editingTicket.performer}
+                    onChange={(e) => setEditingTicket({...editingTicket, performer: e.target.value})}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 pl-10 pr-10 text-sm focus:outline-none focus:border-cyan-500 text-slate-100 transition-colors appearance-none cursor-pointer font-medium"
+                  >
+                    {PERFORMERS.map((name) => (
+                      <option key={name} value={name} className="bg-slate-900 text-slate-100">{name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Источник заявки */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Источник заявки
+                </label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTicket({...editingTicket, isAspans: true})}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                      editingTicket.isAspans 
+                        ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Через Aspans
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTicket({...editingTicket, isAspans: false})}
+                    className={`py-2 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
+                      !editingTicket.isAspans 
+                        ? 'bg-slate-800 text-amber-400 border border-amber-500/30' 
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <FileCheck2 className="w-3.5 h-3.5" />
+                    Вне Aspans
+                  </button>
+                </div>
+              </div>
+
+              {/* Тип системы */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Тип системы
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {CATEGORIES.map((cat) => {
+                    const Icon = cat.icon;
+                    const isSelected = editingTicket.category === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => setEditingTicket({...editingTicket, category: cat.id})}
+                        className={`p-2.5 rounded-xl border text-left flex items-center gap-2 transition-all ${
+                          isSelected
+                            ? `bg-gradient-to-br ${cat.color} border-transparent text-white shadow-md`
+                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : cat.textColor}`} />
+                        <span className="text-xs font-semibold">{cat.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Описание */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">
+                  Описание
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  value={editingTicket.description}
+                  onChange={(e) => setEditingTicket({...editingTicket, description: e.target.value})}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:outline-none focus:border-cyan-500 text-slate-100 transition-colors resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold py-3.5 rounded-xl shadow-lg flex items-center justify-center gap-2 text-sm transition-all"
+              >
+                <CheckCircle2 className="w-5 h-5" />
+                Сохранить изменения
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Нижняя навигация */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 px-6 py-2 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-lg border-t border-slate-800 px-6 py-2 z-30">
         <div className="max-w-md mx-auto flex items-center justify-around">
           <button
             onClick={() => setActiveTab('add')}
